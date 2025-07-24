@@ -3,11 +3,13 @@ from discord.ext import commands
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import os
 import csv
+from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
-TOKEN = "MTM5ODAzNjcyMzg4NzI0NzQ3MA.GXBHIG.4zapvVaoxveJLbpFU8ldA-QY7-bYl_j9na3hNY"
-CHANNEL_ID = 1397846136768958494  # Ton ID de salon ici
+
+TOKEN = os.getenv("DISCORD_TOKEN")
+CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
 
 EMOTIONS = {
     "joie":    {"emoji": "😄", "image": "images/humeurs/joie.png", "role": "Joie"},
