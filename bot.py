@@ -7,9 +7,10 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
+load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-CHANNEL_ID = str(os.getenv("DISCORD_CHANNEL_ID"))
+CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
 
 EMOTIONS = {
     "joie":    {"emoji": "😄", "image": "images/humeurs/joie.png", "role": "Joie"},
