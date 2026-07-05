@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
+CHANNEL_ID = str(os.getenv("DISCORD_CHANNEL_ID"))
 
 EMOTIONS = {
     "joie":    {"emoji": "😄", "image": "images/humeurs/joie.png", "role": "Joie"},
