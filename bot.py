@@ -23,6 +23,8 @@ EMOTIONS = {
 }
 
 CSV_FILE = "humeurs.csv"
+TOILETTE_CSV = "toilettes.csv"
+EAU_CSV = "eau.csv"
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -36,6 +38,18 @@ def save_humeur(user_id, humeur):
     with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow([now.isoformat(), user_id, humeur])
+
+def save_toilette(user_id, type_passage):
+    now = datetime.now()
+    with open(TOILETTE_CSV, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([now.isoformat(), user_id, type_passage])
+
+def save_eau(user_id, quantite_ml):
+    now = datetime.now()
+    with open(EAU_CSV, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([now.isoformat(), user_id, quantite_ml])
 
 class HumeurView(discord.ui.View):
     def __init__(self, user_id):
@@ -157,5 +171,143 @@ async def humeurstats(ctx, periode="semaine"):
     plt.close()
     file = discord.File("stat_humeur.png")
     await ctx.send(f"Voici tes statistiques d'humeur sur la {periode} :", file=file)
+
+@bot.command()
+async def pipi(ctx):
+    """Enregistre un passage aux toilettes (petite commission)."""
+    save_toilette(ctx.author.id, "pipi")
+    await ctx.send(f"💦 Noté, {ctx.author.mention} !")
+
+@bot.command()
+async def caca(ctx):
+    """Enregistre un passage aux toilettes (grosse commission)."""
+    save_toilette(ctx.author.id, "caca")
+    await ctx.send(f"💩 Noté, {ctx.author.mention} !")
+
+@bot.command()
+async def toilettestats(ctx, periode="semaine"):
+    """
+    !toilettestats jour, semaine ou mois
+    """
+    user_id = ctx.author.id
+    now = datetime.now()
+    if periode == "jour":
+        since = now - timedelta(days=1)
+    elif periode == "semaine":
+        since = now - timedelta(days=7)
+    elif periode == "mois":
+        since = now - timedelta(days=30)
+    else:
+        await ctx.send("Période non reconnue. Utilise `jour`, `semaine` ou `mois`.")
+        return
+
+    stats = {"pipi": 0, "caca": 0}
+    if not os.path.exists(TOILETTE_CSV):
+        await ctx.send("Aucune donnée pour le moment !")
+        return
+
+    with open(TOILETTE_CSV, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if len(row) < 3:
+                continue
+            date, uid, type_passage = row
+            try:
+                date_dt = datetime.fromisoformat(date)
+            except:
+                continue
+            if int(uid) == user_id and date_dt >= since and type_passage in stats:
+                stats[type_passage] += 1
+
+    labels = ["💦 Pipi", "💩 Caca"]
+    values = [stats["pipi"], stats["caca"]]
+    plt.figure(figsize=(6, 4))
+    plt.bar(labels, values, color=["#3498db", "#8B5A2B"])
+    plt.title(f"Toilettes de {ctx.author.display_name} ({periode})")
+    plt.ylabel("Nombre de passages")
+    plt.tight_layout()
+    plt.savefig("stat_toilette.png")
+    plt.close()
+    file = discord.File("stat_toilette.png")
+    await ctx.send(f"Voici tes statistiques toilettes sur le/la {periode} :", file=file)
+
+@bot.command()
+async def eau(ctx, quantite: int = 250):
+    """!eau [quantité en ml, défaut 250]"""
+    save_eau(ctx.author.id, quantite)
+    await ctx.send(f"💧 {quantite} ml enregistrés pour {ctx.author.mention} !")
+
+@bot.command()
+async def eaujour(ctx):
+    """Affiche le total d'eau bue aujourd'hui."""
+    user_id = ctx.author.id
+    today = datetime.now().date()
+    total = 0
+    if os.path.exists(EAU_CSV):
+        with open(EAU_CSV, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if len(row) < 3:
+                    continue
+                date, uid, quantite = row
+                try:
+                    date_dt = datetime.fromisoformat(date)
+                except:
+                    continue
+                if int(uid) == user_id and date_dt.date() == today:
+                    total += int(quantite)
+    await ctx.send(f"💧 {ctx.author.mention} a bu **{total} ml** aujourd'hui.")
+
+@bot.command()
+async def eaustats(ctx, periode="semaine"):
+    """
+    !eaustats semaine ou mois — quantité d'eau bue par jour
+    """
+    user_id = ctx.author.id
+    now = datetime.now()
+    if periode == "semaine":
+        nb_jours = 7
+    elif periode == "mois":
+        nb_jours = 30
+    else:
+        await ctx.send("Période non reconnue. Utilise `semaine` ou `mois`.")
+        return
+
+    since = now - timedelta(days=nb_jours)
+    par_jour = {}
+    if os.path.exists(EAU_CSV):
+        with open(EAU_CSV, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if len(row) < 3:
+                    continue
+                date, uid, quantite = row
+                try:
+                    date_dt = datetime.fromisoformat(date)
+                except:
+                    continue
+                if int(uid) == user_id and date_dt >= since:
+                    jour = date_dt.date()
+                    par_jour[jour] = par_jour.get(jour, 0) + int(quantite)
+
+    if not par_jour:
+        await ctx.send("Aucune donnée pour le moment !")
+        return
+
+    jours_tries = sorted(par_jour.keys())
+    labels = [j.strftime("%d/%m") for j in jours_tries]
+    values = [par_jour[j] for j in jours_tries]
+
+    plt.figure(figsize=(8, 4))
+    plt.bar(labels, values, color="#3498db")
+    plt.axhline(y=1500, color="green", linestyle="--", label="Objectif 1.5L")
+    plt.title(f"Eau bue par {ctx.author.display_name} ({periode})")
+    plt.ylabel("ml")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("stat_eau.png")
+    plt.close()
+    file = discord.File("stat_eau.png")
+    await ctx.send(f"Voici tes statistiques d'eau sur la {periode} :", file=file)
 
 bot.run(TOKEN)
